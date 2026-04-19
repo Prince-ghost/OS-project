@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Process Monitor</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header class="navbar">
+    <div class="nav-left">
+      <div class="logo">
+        <span class="logo-icon">⚙</span>
+        <span class="logo-text">ProcessMonitor <span class="logo-ver">v1.0</span></span>
+      </div>
+    </div>
+    <div class="nav-center">
+      <span class="live-dot"></span>
+      <span class="live-label">LIVE</span>
+      <span class="nav-time" id="navTime">--:--:--</span>
+    </div>
+    <div class="nav-right">
+      <button class="btn-nav" id="btnPause" onclick="togglePause()">⏸ Pause</button>
+      <button class="btn-nav btn-danger" onclick="clearLog()">🗑 Clear Log</button>
+      <select id="refreshRate" onchange="changeRefresh(this.value)">
+        <option value="1000">1s refresh</option>
+        <option value="2000" selected>2s refresh</option>
+        <option value="5000">5s refresh</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="alert-banner" id="alertBanner" style="display:none;">
+    <span class="alert-icon">⚠</span>
+    <span id="alertText"></span>
+    <button onclick="document.getElementById('alertBanner').style.display='none'">✕</button>
+  </div>
+
+  <main class="container">
+
+    <!-- METRIC CARDS -->
+    <section class="metric-grid">
+      <div class="card metric-card" id="card-cpu">
+        <div class="metric-icon">🖥</div>
+        <div class="metric-body">
+          <div class="metric-label">CPU Usage</div>
+          <div class="metric-value" id="mCpu">--</div>
+          <div class="metric-sub" id="mCpuSub">avg across cores</div>
+        </div>
+        <div class="metric-ring">
+          <svg viewBox="0 0 64 64" class="ring-svg">
+            <circle cx="32" cy="32" r="28" class="ring-bg"/>
+            <circle cx="32" cy="32" r="28" class="ring-fg" id="ringCpu"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card metric-card" id="card-mem">
+        <div class="metric-icon">💾</div>
+        <div class="metric-body">
+          <div class="metric-label">Memory Used</div>
+          <div class="metric-value" id="mMem">--</div>
+          <div class="metric-sub" id="mMemSub">of 16 GB</div>
+        </div>
+        <div class="metric-ring">
+          <svg viewBox="0 0 64 64" class="ring-svg">
+            <circle cx="32" cy="32" r="28" class="ring-bg"/>
+            <circle cx="32" cy="32" r="28" class="ring-fg ring-green" id="ringMem"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-icon">📋</div>
+        <div class="metric-body">
+          <div class="metric-label">Total Processes</div>
+          <div class="metric-value" id="mProcs">--</div>
+          <div class="metric-sub" id="mProcsSub">running / sleeping</div>
+        </div>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-icon">⏱</div>
+        <div class="metric-body">
+          <div class="metric-label">System Uptime</div>
+          <div class="metric-value" id="mUptime">--</div>
+          <div class="metric-sub">since last boot</div>
+        </div>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-icon">🔄</div>
+        <div class="metric-body">
+          <div class="metric-label">Swap Usage</div>
+          <div class="metric-value" id="mSwap">--</div>
+          <div class="metric-sub">swap memory</div>
+        </div>
+      </div>
+
+      <div class="card metric-card">
+        <div class="metric-icon">💀</div>
+        <div class="metric-body">
+          <div class="metric-label">Zombie / Stopped</div>
+          <div class="metric-value" id="mZombie">--</div>
+          <div class="metric-sub" id="mZombieSub">anomalous processes</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHARTS -->
+    <section class="charts-row">
+      <div class="card chart-card">
+        <div class="chart-header">
+          <span class="chart-title">CPU History <span class="chart-window">(30s rolling window)</span></span>
+          <span class="chart-current" id="cpuCurrent">--%</span>
+        </div>
+        <div style="position:relative; height:110px;">
+          <canvas id="cpuChart" role="img" aria-label="CPU usage history over last 30 seconds">CPU history</canvas>
+        </div>
+      </div>
+      <div class="card chart-card">
+        <div class="chart-header">
+          <span class="chart-title">Memory History <span class="chart-window">(30s rolling window)</span></span>
+          <span class="chart-current green" id="memCurrent">--%</span>
+        </div>
+        <div style="position:relative; height:110px;">
+          <canvas id="memChart" role="img" aria-label="Memory usage history over last 30 seconds">Memory history</canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROCESS TABLE -->
+    <section class="card table-section">
+      <div class="table-toolbar">
+        <div class="toolbar-left">
+          <h2 class="table-title">⚙ Process List</h2>
+          <span class="proc-count" id="procCount">0 processes</span>
+        </div>
+        <div class="toolbar-right">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search by name or user..." oninput="filterTable()" />
+          </div>
+          <select id="statusFilter" onchange="filterTable()">
+            <option value="">All Status</option>
+            <option value="running">Running</option>
+            <option value="sleeping">Sleeping</option>
+            <option value="zombie">Zombie</option>
+            <option value="stopped">Stopped</option>
+          </select>
+          <select id="sortSelect" onchange="sortTable(this.value)">
+            <option value="cpu">Sort: CPU%</option>
+            <option value="mem">Sort: MEM%</option>
+            <option value="pid">Sort: PID</option>
+            <option value="name">Sort: Name</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="proc-table">
+          <thead>
+            <tr>
+              <th onclick="sortTable('pid')">PID ↕</th>
+              <th onclick="sortTable('name')">Process Name ↕</th>
+              <th>Status</th>
+              <th onclick="sortTable('cpu')">CPU% ↕</th>
+              <th onclick="sortTable('mem')">MEM% ↕</th>
+              <th>Threads</th>
+              <th>User</th>
+              <th>Priority</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="procBody">
+            <tr><td colspan="9" class="loading-row">Initializing...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- BOTTOM ROW -->
+    <section class="bottom-row">
+      <div class="card load-card">
+        <h3 class="section-title">📊 System Load Average</h3>
+        <div class="load-item">
+          <span class="load-label">1 min</span>
+          <div class="load-bar-wrap"><div class="load-bar" id="load1bar"></div></div>
+          <span class="load-val" id="load1">--</span>
+        </div>
+        <div class="load-item">
+          <span class="load-label">5 min</span>
+          <div class="load-bar-wrap"><div class="load-bar load-bar-green" id="load5bar"></div></div>
+          <span class="load-val" id="load5">--</span>
+        </div>
+        <div class="load-item">
+          <span class="load-label">15 min</span>
+          <div class="load-bar-wrap"><div class="load-bar load-bar-purple" id="load15bar"></div></div>
+          <span class="load-val" id="load15">--</span>
+        </div>
+        <div class="core-info" id="coreInfo">Calculating...</div>
+      </div>
+
+      <div class="card log-card">
+        <div class="log-header">
+          <h3 class="section-title">📝 Activity Log</h3>
+          <span class="log-count" id="logCount">0 events</span>
+        </div>
+        <div class="log-body" id="logBody">
+          <div class="log-entry log-info">System monitor started...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- KILL MODAL -->
+  <div class="modal-overlay" id="killModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-icon">⚠</div>
+      <h3 class="modal-title">Confirm Kill Process</h3>
+      <p class="modal-body" id="killModalBody">Are you sure?</p>
+      <div class="modal-actions">
+        <button class="btn-modal btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-modal btn-confirm" id="killConfirmBtn">Kill Process</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DETAIL MODAL -->
+  <div class="modal-overlay" id="detailModal" style="display:none;">
+    <div class="modal modal-wide">
+      <h3 class="modal-title" id="detailTitle">Process Details</h3>
+      <div class="detail-grid" id="detailGrid"></div>
+      <div class="modal-actions">
+        <button class="btn-modal btn-cancel" onclick="closeDetailModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/processes.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

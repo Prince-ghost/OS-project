@@ -1,56 +1,78 @@
-# Real-Time Process Monitoring Dashboard
+# OS Project - Process Monitor Dashboard
 
-## VS Code me kaise chalayein
+This is my OS subject project. I made a real-time process monitoring dashboard that shows CPU usage, memory, and running processes on your system.
 
-### Option A — Seedha Browser mein (koi install nahi chahiye)
-1. ZIP extract karo
-2. `index.html` par right-click → "Open with Live Server" (VS Code extension)
-   - Ya seedha double-click karke browser mein kholo
-3. Done — simulated data ke saath poora dashboard chalega
+---
 
-### Option B — Real OS Data (Python backend)
+## What this does
+
+- Shows live CPU and memory usage with graphs
+- Lists all running processes with their PID, CPU%, memory usage and status
+- You can kill a process or change its priority (renice) directly from the dashboard
+- Shows alerts when CPU goes above 80% or if a zombie process is found
+- Has an activity log that records everything with timestamps
+- Refresh rate can be adjusted or paused anytime
+
+---
+
+## How to run
+
+### Simple way (no install needed)
+Just open `index.html` in your browser. It will run with simulated data.
+
+If you have VS Code, install the **Live Server** extension and right-click `index.html` → Open with Live Server.
+
+### With real system data (Python needed)
 ```bash
-# Terminal mein:
 pip install flask flask-cors psutil
 
 python app.py
-
-# Browser mein kholo:
-http://localhost:5000
 ```
+Then open `http://localhost:5000` in your browser.
 
-## Project Structure
+---
+
+## Files in this project
+
 ```
-process-monitor/
-├── index.html          ← Main dashboard page
+OS-project/
+├── index.html          - main dashboard page
+├── app.py              - python backend (flask)
+├── requirements.txt    - python packages needed
 ├── css/
-│   └── style.css       ← Dark theme, animations
+│   └── style.css       - styling and dark theme
 ├── js/
-│   ├── data.js         ← Rolling window data (BUG FIXED)
-│   ├── charts.js       ← Chart.js sparklines (fixed size)
-│   ├── processes.js    ← Table, Kill, Nice, Filter, Sort
-│   └── app.js          ← Main controller & alerts
-├── app.py              ← Python Flask backend (real data)
-├── requirements.txt
+│   ├── app.js          - main logic
+│   ├── charts.js       - graphs
+│   ├── data.js         - data handling
+│   └── processes.js    - process table and controls
 └── README.md
 ```
 
-## Bug Fix (Rolling Window)
-Pehle wali galti — chart data badhta rehta tha:
+---
+
+## Technologies used
+
+- HTML, CSS, JavaScript (frontend)
+- Python with Flask (backend)
+- Chart.js (for graphs)
+- psutil library (to get real system data)
+
+---
+
+## Bug I fixed
+
+Earlier the chart data kept growing forever which made the graph weird. Fixed it by using a rolling window of 30 data points:
+
 ```js
-cpuHistory.push(newValue);  // array grow karta tha — GALAT
-```
-Ab fix:
-```js
-cpuHistory.shift();         // purana hatao
-cpuHistory.push(newValue);  // naya daalo — hamesha 30 items
+// before (wrong)
+cpuHistory.push(newValue);
+
+// after (fixed)
+cpuHistory.shift();
+cpuHistory.push(newValue);
 ```
 
-## Features
-- Live CPU & Memory ring gauges
-- 30-second fixed rolling window charts
-- Sortable, filterable process table
-- Kill & Renice with confirmation
-- Alert banner (CPU > 80%, Zombie)
-- Activity log with timestamps
-- Pause/Resume, adjustable refresh rate
+---
+
+Made for CA2 - Operating Systems

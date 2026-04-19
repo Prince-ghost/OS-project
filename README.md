@@ -1,6 +1,6 @@
 # OS Project - Process Monitor Dashboard
 
-made this for my OS subject (CA2). it shows live CPU and memory usage along with all running processes on the system.
+made this for my Operating System subject. it shows live CPU and memory usage along with all running processes on the system.
 
 ---
 

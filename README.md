@@ -1,5 +1,7 @@
 # OS Project - Process Monitor Dashboard
 
+**🔴 Live Demo:** [https://os-project-6hrs.onrender.com](https://os-project-6hrs.onrender.com)
+
 made this for my Operating System subject. it shows live CPU and memory usage along with all running processes on the system.
 
 ---
@@ -17,12 +19,10 @@ made this for my Operating System subject. it shows live CPU and memory usage al
 
 ## how to run
 
-open `index.html` directly in browser, it runs on simulated data.
-
 for real system data you need python:
 
 ```
-pip install flask flask-cors psutil
+pip install -r requirements.txt
 python app.py
 ```
 

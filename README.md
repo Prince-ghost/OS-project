@@ -1,6 +1,6 @@
 # OS Project - Process Monitor Dashboard
 
-**🔴 Live Demo:** [https://os-project-6hrs.onrender.com](https://os-project-6hrs.onrender.com)
+**🔴 Live Demo:** [https://os-project-6hrs.onrender.com](https://os-project-6brs.onrender.com)
 
 made this for my Operating System subject. it shows live CPU and memory usage along with all running processes on the system.
 

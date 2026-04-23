@@ -7,6 +7,7 @@ let _intervalId = null;
 let _refreshMs = 2000;
 let _tickCount = 0;
 let _lastAlert = '';
+let lastProcs = []; // Global list of processes for filtering and modals
 
 // ── INIT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -18,26 +19,30 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── MAIN TICK ─────────────────────────────────────────────────
-function tick() {
+async function tick() {
   if (_paused) return;
   _tickCount++;
 
-  tickData();   // update rolling history arrays + process stats
+  try {
+    const sys = await getSystemMetrics();
+    const procs = await getProcesses();
+    lastProcs = procs;
 
-  const sys   = getSystemMetrics();
-  const procs = getProcesses();
+    _updateCards(sys);
+    updateCharts(sys.cpu_history, sys.mem_history);
+    _updateLoadBars(sys);
+    renderTable(procs);
+    _checkAlerts(sys);
 
-  _updateCards(sys);
-  updateCharts(sys.cpu_history, sys.mem_history);   // pass fixed-size arrays
-  _updateLoadBars(sys);
-  renderTable(procs);
-  _checkAlerts(sys);
-
-  if (_tickCount % 12 === 0) {
-    addLog(
-      `Poll #${_tickCount} — CPU: ${sys.cpu_percent.toFixed(1)}% | MEM: ${sys.mem_percent.toFixed(1)}%`,
-      'log-info'
-    );
+    if (_tickCount % 12 === 0) {
+      addLog(
+        `Poll #${_tickCount} — CPU: ${sys.cpu_percent.toFixed(1)}% | MEM: ${sys.mem_percent.toFixed(1)}%`,
+        'log-info'
+      );
+    }
+  } catch (err) {
+    console.error("API Fetch Error:", err);
+    document.getElementById('mCpu').textContent = 'ERR';
   }
 }
 

@@ -68,14 +68,14 @@ function renderTable(processes) {
 function filterTable() {
   _filterStr    = document.getElementById('searchInput').value.toLowerCase().trim();
   _statusFilter = document.getElementById('statusFilter').value;
-  renderTable(getProcesses());
+  renderTable(lastProcs || []);
 }
 
 function sortTable(key) {
   if (_sortKey === key) _sortAsc = !_sortAsc;
   else { _sortKey = key; _sortAsc = false; }
   document.getElementById('sortSelect').value = key;
-  renderTable(getProcesses());
+  renderTable(lastProcs || []);
 }
 
 // ── KILL ──────────────────────────────────────────────────────
@@ -89,15 +89,17 @@ function promptKill(pid, name) {
 
 function confirmKill() {
   if (!_pendingKill) return;
-  const p = getProcesses().find(x => x.pid === _pendingKill);
+  const p = (lastProcs || []).find(x => x.pid === _pendingKill);
   if (p) {
     const row = document.querySelector(`tr[data-pid="${_pendingKill}"]`);
     if (row) row.classList.add('row-kill');
-    setTimeout(() => {
-      killProcess(_pendingKill);
-      renderTable(getProcesses());
-    }, 380);
-    addLog(`Killed process "${p.name}" (PID ${p.pid})`, 'log-kill');
+    
+    killProcess(_pendingKill).then(() => {
+      addLog(`Killed process "${p.name}" (PID ${p.pid})`, 'log-kill');
+      tick(); // force refresh
+    }).catch(err => {
+      addLog(`Failed to kill "${p.name}": ${err.message}`, 'log-alert');
+    });
   }
   closeModal();
 }
@@ -109,15 +111,17 @@ function closeModal() {
 
 // ── NICE ──────────────────────────────────────────────────────
 function doNice(pid, name) {
-  if (niceProcess(pid)) {
+  niceProcess(pid).then(() => {
     addLog(`Reniced "${name}" (PID ${pid}) — CPU priority lowered`, 'log-nice');
-    renderTable(getProcesses());
-  }
+    tick(); // force refresh
+  }).catch(err => {
+    addLog(`Failed to nice "${name}": ${err.message}`, 'log-alert');
+  });
 }
 
 // ── DETAIL MODAL ──────────────────────────────────────────────
 function showDetail(pid) {
-  const p = getProcesses().find(x => x.pid === pid);
+  const p = (lastProcs || []).find(x => x.pid === pid);
   if (!p) return;
   document.getElementById('detailTitle').textContent = `Process: ${p.name}`;
   document.getElementById('detailGrid').innerHTML = [
